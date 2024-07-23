@@ -1,1 +1,54 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import scipy.stats as stats
 
+def tauchen(N, mu, rho, sigma, m):
+    Zprob = np.zeros((N, N)) 
+    c = (1 - rho) * mu
+    
+    zmax = m * np.sqrt(sigma**2 / (1 - rho**2))
+    zmin = -zmax
+    w = (zmax - zmin) / (N - 1)
+    
+    Z = np.linspace(zmin, zmax, N)
+    Z += mu
+    
+    for j in range(N):
+        for k in range(N):
+            if k == 0:
+                Zprob[j, k] = cdf_normal((Z[k] - c - rho * Z[j] + w / 2) / sigma)
+            elif k == N - 1:
+                Zprob[j, k] = 1 - cdf_normal((Z[k] - c - rho * Z[j] - w / 2) / sigma)
+            else:
+                Zprob[j, k] = cdf_normal((Z[k] - c - rho * Z[j] + w / 2) / sigma) - cdf_normal((Z[k] - c - rho * Z[j] - w / 2) / sigma)
+    
+    return Z, Zprob
+
+def cdf_normal(x):
+    return stats.norm.cdf(x, loc=0, scale=1)
+
+N = 2
+mu = 0
+rho = 0.6
+sigma = 0.6
+m = 2.575
+
+Z, Zprob = tauchen(N, mu, rho, sigma, m)
+
+T = 1000
+ivec = np.zeros(T + 1, dtype=int)
+ivec[0] = 1
+cumP = np.cumsum(Zprob, axis=1)
+
+for t in range(T):
+    cumPi = cumP[ivec[t], :]
+    rand = stats.uniform.rvs()
+    ivec[t + 1] = sum(rand - cumPi >= 0)
+    ivec[t + 1] = min(ivec[t + 1], N - 1)
+
+fig, ax = plt.subplots(figsize=(8, 6))
+ax.plot(Z[ivec])
+ax.set_xlabel('Time')
+ax.set_ylabel('Productivity')
+ax.grid(ls="--")
+plt.show()
