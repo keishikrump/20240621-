@@ -1,66 +1,63 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import scipy.stats as stats
+from scipy.stats import norm
 
-def tauchen(N, mu, rho, sigma, m):
-    Zprob = np.zeros((N, N)) 
-    c = (1 - rho) * mu
-    
-    zmax = m * np.sqrt(sigma**2 / (1 - rho**2))
-    zmin = -zmax
-    w = (zmax - zmin) / (N - 1)
-    
-    Z = np.linspace(zmin, zmax, N)
-    Z += mu
-    
-    for j in range(N):
-        for k in range(N):
-            if k == 0:
-                Zprob[j, k] = cdf_normal((Z[k] - c - rho * Z[j] + w / 2) / sigma)
-            elif k == N - 1:
-                Zprob[j, k] = 1 - cdf_normal((Z[k] - c - rho * Z[j] - w / 2) / sigma)
-            else:
-                Zprob[j, k] = cdf_normal((Z[k] - c - rho * Z[j] + w / 2) / sigma) - cdf_normal((Z[k] - c - rho * Z[j] - w / 2) / sigma)
-    
-    return Z, Zprob
-
-def cdf_normal(x):
-    return stats.norm.cdf(x, loc=0, scale=1)
-
-N = 2
-mu = 0
-rho = 0.6
-sigma = 0.6
-m = 2.575
-
-Z, Zprob = tauchen(N, mu, rho, sigma, m)
-
+sigma = 1.5
 beta = 0.98
-sigma_c = 1.5
+rho = 0.6
+sigma_eps = 0.6
 r = 0.04
 w = 1
 T = 1
 
-a_min = 0
-a_max = 10
-a_size = 100
-A = np.linspace(a_min, a_max, a_size)
+h_L = np.exp(-sigma_eps)
+h_H = np.exp(sigma_eps)
+h_grid = np.array([h_L, h_H])
 
-def savings_rate(a, h, r, w, T, beta, sigma_c):
-    c = w * h + (1 + r) * a + T
-    a_next = beta * (c ** (-sigma_c)) / ((1 + r) * (c ** (-sigma_c)))
-    savings_rate = a_next / a
-    return savings_rate
+num_states = len(h_grid)
 
-savings_rates_low = [savings_rate(a, Z[0], r, w, T, beta, sigma_c) for a in A]
-savings_rates_high = [savings_rate(a, Z[1], r, w, T, beta, sigma_c) for a in A]
+def tauchen(rho, sigma_eps, num_states=2):
+    z_std = sigma_eps / np.sqrt(1 - rho**2)
+    z_grid = np.linspace(-z_std, z_std, num_states)
+    step = z_grid[1] - z_grid[0]
+    z_grid = np.exp(z_grid)
+
+    P = np.zeros((num_states, num_states))
+
+    for i in range(num_states):
+        for j in range(num_states):
+            if j == 0:
+                P[i, j] = norm.cdf((z_grid[j] - rho * z_grid[i] + step / 2) / sigma_eps)
+            elif j == num_states - 1:
+                P[i, j] = 1 - norm.cdf((z_grid[j] - rho * z_grid[i] - step / 2) / sigma_eps)
+            else:
+                P[i, j] = norm.cdf((z_grid[j] - rho * z_grid[i] + step / 2) / sigma_eps) - \
+                          norm.cdf((z_grid[j] - rho * z_grid[i] - step / 2) / sigma_eps)
+    return z_grid, P
+
+h_grid, P = tauchen(rho, sigma_eps, num_states)
+print("生産性グリッド:", h_grid)
+print("遷移行列:\n", P)
+
+a_grid = np.linspace(0, 10, 100)
+
+def utility(c, sigma):
+    return c**(1 - sigma) / (1 - sigma)
+
+savings_rate_subsidy = np.zeros((num_states, len(a_grid)))
+
+for i, h in enumerate(h_grid):
+    for j, a in enumerate(a_grid):
+        c = w * h + (1 + r) * a + T - a  
+        savings_rate_subsidy[i, j] = a / (w * h + (1 + r) * a + T)  
 
 plt.figure(figsize=(10, 6))
-plt.plot(A, savings_rates_low, label=f'低生産性 ({Z[0]:.2f})')
-plt.plot(A, savings_rates_high, label=f'高生産性 ({Z[1]:.2f})')
-plt.xlabel('現在の資産')
+for i in range(num_states):
+    plt.plot(a_grid, savings_rate_subsidy[i, :], label=f'h = {h_grid[i]:.2f}')
+
+plt.xlabel('現在の資産 (a)')
 plt.ylabel('貯蓄率')
+plt.title('資産と貯蓄率の関係（一括補助金導入）')
 plt.legend()
-plt.title('一括補助金導入後の貯蓄率')
 plt.grid(True)
 plt.show()
