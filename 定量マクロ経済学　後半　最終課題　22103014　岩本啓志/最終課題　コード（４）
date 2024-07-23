@@ -41,7 +41,7 @@ print("生産性グリッド:", h_grid)
 print("遷移行列:\n", P)
 
 a_min, a_max = 0, 10
-num_a = 500  # グリッドポイントを増加
+num_a = 500
 a_grid = np.linspace(a_min, a_max, num_a)
 
 def utility(c, sigma):
@@ -75,7 +75,7 @@ for i in range(1000):
 savings_rate_low_beta = np.zeros((num_states, num_a))
 for s in range(num_states):
     for j, a in enumerate(a_grid):
-        # Handle the case where 'a' is zero to avoid division by zero
+        
         if a != 0:
             savings_rate_low_beta[s, j] = (policy[s, j] - a) / a 
         else:
