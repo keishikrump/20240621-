@@ -1,1 +1,66 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import scipy.stats as stats
 
+def tauchen(N, mu, rho, sigma, m):
+    Zprob = np.zeros((N, N)) 
+    c = (1 - rho) * mu
+    
+    zmax = m * np.sqrt(sigma**2 / (1 - rho**2))
+    zmin = -zmax
+    w = (zmax - zmin) / (N - 1)
+    
+    Z = np.linspace(zmin, zmax, N)
+    Z += mu
+    
+    for j in range(N):
+        for k in range(N):
+            if k == 0:
+                Zprob[j, k] = cdf_normal((Z[k] - c - rho * Z[j] + w / 2) / sigma)
+            elif k == N - 1:
+                Zprob[j, k] = 1 - cdf_normal((Z[k] - c - rho * Z[j] - w / 2) / sigma)
+            else:
+                Zprob[j, k] = cdf_normal((Z[k] - c - rho * Z[j] + w / 2) / sigma) - cdf_normal((Z[k] - c - rho * Z[j] - w / 2) / sigma)
+    
+    return Z, Zprob
+
+def cdf_normal(x):
+    return stats.norm.cdf(x, loc=0, scale=1)
+
+N = 2
+mu = 0
+rho = 0.6
+sigma = 0.6
+m = 2.575
+
+Z, Zprob = tauchen(N, mu, rho, sigma, m)
+
+beta = 0.98
+sigma_c = 1.5
+r = 0.04
+w = 1
+T = 1
+
+a_min = 0
+a_max = 10
+a_size = 100
+A = np.linspace(a_min, a_max, a_size)
+
+def savings_rate(a, h, r, w, T, beta, sigma_c):
+    c = w * h + (1 + r) * a + T
+    a_next = beta * (c ** (-sigma_c)) / ((1 + r) * (c ** (-sigma_c)))
+    savings_rate = a_next / a
+    return savings_rate
+
+savings_rates_low = [savings_rate(a, Z[0], r, w, T, beta, sigma_c) for a in A]
+savings_rates_high = [savings_rate(a, Z[1], r, w, T, beta, sigma_c) for a in A]
+
+plt.figure(figsize=(10, 6))
+plt.plot(A, savings_rates_low, label=f'低生産性 ({Z[0]:.2f})')
+plt.plot(A, savings_rates_high, label=f'高生産性 ({Z[1]:.2f})')
+plt.xlabel('現在の資産')
+plt.ylabel('貯蓄率')
+plt.legend()
+plt.title('一括補助金導入後の貯蓄率')
+plt.grid(True)
+plt.show()
