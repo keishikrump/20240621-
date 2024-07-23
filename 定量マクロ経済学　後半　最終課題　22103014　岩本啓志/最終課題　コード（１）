@@ -52,3 +52,46 @@ ax.set_xlabel('Time')
 ax.set_ylabel('Productivity')
 ax.grid(ls="--")
 plt.show()
+
+def cdf_normal(x):
+    return stats.norm.cdf(x, loc=0, scale=1)
+
+N = 2
+mu = 0
+rho = 0.6
+sigma = 0.6
+m = 2.575
+
+Z, Zprob = tauchen(N, mu, rho, sigma, m)
+
+beta = 0.98
+sigma_c = 1.5
+r = 0.04
+w = 1
+
+a_min = 0
+a_max = 10
+a_size = 100
+A = np.linspace(a_min, a_max, a_size)
+
+def consumption(a, h, r, w, beta, sigma_c):
+    return w * h + (1 + r) * a - beta * ((w * h + (1 + r) * a) ** (-sigma_c))
+
+def savings_rate(a, h, r, w, beta, sigma_c):
+    c = consumption(a, h, r, w, beta, sigma_c)
+    a_next = w * h + (1 + r) * a - c
+    savings_rate = a_next / a if a != 0 else 0
+    return savings_rate
+
+savings_rates_low = [savings_rate(a, Z[0], r, w, beta, sigma_c) for a in A]
+savings_rates_high = [savings_rate(a, Z[1], r, w, beta, sigma_c) for a in A]
+
+plt.figure(figsize=(10, 6))
+plt.plot(A, savings_rates_low, label=f'低生産性 ({Z[0]:.2f})')
+plt.plot(A, savings_rates_high, label=f'高生産性 ({Z[1]:.2f})')
+plt.xlabel('現在の資産')
+plt.ylabel('貯蓄率')
+plt.legend()
+plt.title('現在の資産と貯蓄率の関係')
+plt.grid(True)
+plt.show()
